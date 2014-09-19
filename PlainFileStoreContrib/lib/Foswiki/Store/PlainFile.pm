@@ -1135,27 +1135,38 @@ sub _writeMetaFile {
     _saveFile( $mf, join( "\n", map { defined $_ ? $_ : '' } @_ ) );
 }
 
-# Record a change in the web history
+=begin TML
+
+---++ ObjectMethod recordChange(%args)
+
+See Foswiki::Store for documentation
+
+=cut
+
 sub recordChange {
     my $this = shift;
     my %args = @_;
     $args{more} ||= '';
     ASSERT( $args{cuid} ) if DEBUG;
-    ASSERT( defined $args{more} ) if DEBUG;
-
-    #    my ( $meta, $cUID, $rev, $more ) = @_;
-    #    $more ||= '';
+    ASSERT( defined $args{_meta} ) if DEBUG;
 
     my $file = _getData( $args{_meta}->web ) . '/.changes';
     my @changes;
     my $text = '';
     my $t    = time;
+    my $fh;
 
+    # If file exists, slurp in the contents, skipping records older than needed.
     if ( -e $file ) {
         my $cutoff = $t - $Foswiki::cfg{Store}{RememberChangesFor};
-        my $fh;
-        open( $fh, '<', $file )
-          or die "PlainFile: failed to read $file: $!";
+
+        # Open file in read/write mode, so we can hold lock across the truncate.
+        open( $fh, '+<', $file )
+          or die "PlainFile: failed to open $file: $!";
+        flock( $fh, LOCK_EX )
+          or die("PlainFile: failed to lock file $file: $!");
+        binmode($fh)
+          or die("PlainFile: failed to binmode $file: $!");
         local $/ = "\n";
         my $head = 1;
         while ( my $line = <$fh> ) {
@@ -1167,14 +1178,31 @@ sub recordChange {
             }
             $text .= "$line\n";
         }
-        close($fh);
+        seek( $fh, 0, 0 );
+        truncate( $fh, 0 );
+    }
+
+    # else create the file.
+    else {
+        _mkPathTo($file);
+        open( $fh, '>', $file )
+          or die("PlainFile: failed to create file $file: $!");
+        flock( $fh, LOCK_EX )
+          or die("PlainFile: failed to lock file $file: $!");
+        binmode($fh)
+          or die("PlainFile: failed to binmode $file: $!");
     }
 
     # Add the new change to the end of the file
     $text .= $args{_meta}->topic || '.';
     $text .= "\t$args{cuid}\t$t\t$args{revision}\t$args{more}\n";
 
-    _saveFile( $file, $text );
+    # Write out the contents. The lock is released on close
+    print $fh $text
+      or die("PlainFile: failed to print into $file: $!");
+    close($fh)
+      or die("PlainFile: failed to close file $file: $!");
+
 }
 
 # Read an entire file

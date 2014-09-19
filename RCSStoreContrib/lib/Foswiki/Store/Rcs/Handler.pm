@@ -1439,59 +1439,82 @@ sub hidePath {
 
 =begin TML
 
----++ ObjectMethod recordChange($cUID, $rev, $more)
-Record that the file changed, and who changed it
+---++ ObjectMethod recordChange(%args)
 
-        cuid          => $cUID,
-        revision      => $rev,
-        verb          => $verb,
-        newmeta       => $topicObject,
-        newattachment => $name
+See Foswiki::Store for documentation
 
 =cut
 
 sub recordChange {
     my $this = shift;
-    my %args = ( 'more', '', @_ );
+    my %args = @_;
+    $args{more} ||= '';
     ASSERT( $args{cuid} ) if DEBUG;
+    ASSERT( defined $args{_meta} ) if DEBUG;
 
-#we do'nt record autoattach events in the .changes file, but other stores may be interested
-    return if ( $args{verb} eq 'autoattach' );
+    my $file = _getData( $args{_meta}->web ) . '/.changes';
+    my @changes;
+    my $text = '';
+    my $t    = time;
+    my $fh;
 
-    my $file = $Foswiki::cfg{DataDir} . '/' . $this->{web} . '/.changes';
+    # If file exists, slurp in the contents, skipping records older than needed.
+    if ( -e $file ) {
+        my $cutoff = $t - $Foswiki::cfg{Store}{RememberChangesFor};
 
-    my @changes =
-      map {
-        my @row = split( /\t/, $_, 5 );
-        \@row
-      }
-      split( /[\r\n]+/, readFile( $this, $file ) );
+        # Open file in read/write mode, so we can hold lock across the truncate.
+        open( $fh, '+<', $file )
+          or die "RCSStore: failed to open $file: $!";
+        flock( $fh, LOCK_EX )
+          or die("RCSStore: failed to lock file $file: $!");
+        binmode($fh)
+          or die("RCSStore: failed to binmode $file: $!");
+        local $/ = "\n";
+        my $head = 1;
+        while ( my $line = <$fh> ) {
+            chomp($line);
+            if ($head) {
+                my @row = split( /\t/, $line, 4 );
+                next if ( $row[2] < $cutoff );
+                $head = 0;
+            }
+            $text .= "$line\n";
+        }
+        seek( $fh, 0, 0 );
+        truncate( $fh, 0 );
+    }
 
-    # Forget old stuff
-    my $cutoff = time() - $Foswiki::cfg{Store}{RememberChangesFor};
-    while ( scalar(@changes) && $changes[0]->[2] < $cutoff ) {
-        shift(@changes);
+    # else create the file.
+    else {
+        $this->mkPathTo($file);
+        open( $fh, '>', $file )
+          or die("RCSStore: failed to create file $file: $!");
+        flock( $fh, LOCK_EX )
+          or die("RCSStore: failed to lock file $file: $!");
+        binmode($fh)
+          or die("RCSStore: failed to binmode $file: $!");
     }
 
     # Add the new change to the end of the file
-    push(
-        @changes,
-        [
-            $this->{topic} || '.', $args{cuid},
-            time(), $args{revision},
-            $args{more}
-        ]
-    );
+    $text .= $args{_meta}->topic || '.';
+    $text .= "\t$args{cuid}\t$t\t$args{revision}\t$args{more}\n";
 
-    # Doing this using a Schwartzian transform sometimes causes a mysterious
-    # undefined value, so had to unwrap it to a for loop.
-    for ( my $i = 0 ; $i <= $#changes ; $i++ ) {
-        $changes[$i] = join( "\t", @{ $changes[$i] } );
-    }
+    # Write out the contents. The lock is released on close
+    print $fh $text
+      or die("RCSStore: failed to print into $file: $!");
+    close($fh)
+      or die("RCSStore: failed to close file $file: $!");
 
-    my $text = join( "\n", @changes );
+}
 
-    saveFile( $this, $file, $text );
+# Get the absolute file path to a file in data. $what can be a Meta or
+# a string path (e.g. a web name)
+sub _getData {
+    my ($what) = @_;
+    my $path = $Foswiki::cfg{DataDir} . '/';
+    return $path . $what unless ref($what);
+    return $path . $what->web unless $what->topic;
+    return $path . $what->web . '/' . $what->topic;
 }
 
 =begin TML

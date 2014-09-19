@@ -729,6 +729,7 @@ This is a private method to be called only from the store internals,
 but it can be used by  $Foswiki::Cfg{Store}{ImplementationClasses} to
 chain in to eveavesdrop on Store events
 
+   * meta - TopicObject of the item being changed - (new or old)
    * cuid - who is making the change
    * revision - the revision of the topic or attachment that the change appears in
    * verb - the action - one of
@@ -736,11 +737,15 @@ chain in to eveavesdrop on Store events
       * =insert= - a web, topic or attachment is being inserted
       * =remove= - a topic or attachment is being removed
       * =autoattach= - special case of =insert= for autoattachments
-   * newmeta - Foswiki::Meta object for the new object (not remove)
-   * newattachment - attachment name (not remove)
-   * oldmeta - Foswiki::Meta object for the origin of a move (move, remove only)
-   * oldattachment - origin of move (move, remove only)
    * more - descriptive text containing store-specific flags
+      * minor - Minor change not reported
+      * delRev - Remove the head revision
+      * repRev - Replace the head revision
+   * Provided but never used:
+       * newmeta - Foswiki::Meta object for the new object (not remove)
+       * newattachment - attachment name (not remove)
+       * oldmeta - Foswiki::Meta object for the origin of a move (move, remove only)
+       * oldattachment - origin of move (move, remove only)
 
 =cut
 

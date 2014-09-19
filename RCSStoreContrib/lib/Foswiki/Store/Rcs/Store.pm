@@ -159,6 +159,7 @@ sub readTopic {
 
                 #this record should be ignored by the .changes file
                 $this->recordChange(
+                    _meta    => $topicObject,
                     _handler => $handler,
                     cuid => $Foswiki::Users::BaseUserMapping::UNKNOWN_USER_CUID,
                     revision      => 0,
@@ -194,6 +195,7 @@ sub moveAttachment {
         $handler->moveAttachment( $this, $newTopicObject->web,
             $newTopicObject->topic, $newAttachment );
         $this->recordChange(
+            _meta         => $oldTopicObject,
             _handler      => $handler,
             cuid          => $cUID,
             revision      => 0,
@@ -221,6 +223,7 @@ sub copyAttachment {
         $handler->copyAttachment( $this, $newTopicObject->web,
             $newTopicObject->topic, $newAttachment );
         $this->recordChange(
+            _meta         => $newTopicObject,
             _handler      => $handler,
             cuid          => $cUID,
             revision      => 0,
@@ -253,6 +256,7 @@ sub moveTopic {
 
         # Record that it was moved away
         $this->recordChange(
+            _meta    => $oldTopicObject,
             _handler => $handler,
 
             cuid     => $cUID,
@@ -267,6 +271,7 @@ sub moveTopic {
     $handler =
       $this->getHandler( $newTopicObject->web, $newTopicObject->topic, '' );
     $this->recordChange(
+        _meta    => $newTopicObject,
         _handler => $handler,
 
         cuid     => $cUID,
@@ -289,6 +294,7 @@ sub moveWeb {
     # a useless .changes. See Item9278
     $handler = $this->getHandler( $newWebObject->web );
     $this->recordChange(
+        _meta    => $oldWebObject,
         _handler => $handler,
 
         cuid     => $cUID,
@@ -435,6 +441,7 @@ sub saveAttachment {
 
     my $rev = $handler->getLatestRevisionID();
     $this->recordChange(
+        _meta    => $topicObject,
         _handler => $handler,
 
         cuid          => $cUID,
@@ -479,6 +486,7 @@ sub saveTopic {
 
     my $extra = $options->{minor} ? 'minor' : '';
     $this->recordChange(
+        _meta    => $topicObject,
         _handler => $handler,
 
         cuid     => $cUID,
@@ -511,6 +519,7 @@ sub repRev {
 
     my $rev = $handler->getLatestRevisionID();
     $this->recordChange(
+        _meta    => $topicObject,
         _handler => $handler,
         cuid     => $cUID,
         revision => $rev,
@@ -544,6 +553,7 @@ sub delRev {
     $handler->restoreLatestRevision($cUID);
 
     $this->recordChange(
+        _meta    => $topicObject,
         _handler => $handler,
 
         cuid     => $cUID,
@@ -626,6 +636,17 @@ sub eachChange {
     return $handler->eachChange($time);
 }
 
+=begin TML
+
+---++ ObjectMethod recordChange(%args)
+
+Skip recording removal of a web.  The directory containing
+the web .changes file has been removed.
+
+See Foswiki::Store for further documentation.
+
+=cut
+
 sub recordChange {
     my ( $this, %args ) = @_;
     ASSERT( $args{_handler} );
@@ -700,6 +721,7 @@ sub remove {
         $more .= ': ' . $attachment;
     }
     $this->recordChange(
+        _meta    => $topicObject,
         _handler => $handler,
 
         cuid          => $cUID,
