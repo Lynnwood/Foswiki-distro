@@ -1139,7 +1139,23 @@ sub _writeMetaFile {
 
 ---++ ObjectMethod recordChange(%args)
 
-See Foswiki::Store for documentation
+See Foswiki::Store for calling conventions
+
+Records changes in a plain text file, fields separated by tab delimiters
+
+| Topic | cUID | revision | more (minor delRev repRev) | verb | Attachment | attachRev | Other Web.Topic | OtherAttachemnt |
+| y | y | y | | update | ? | ? | | |
+| y | y | y | | insert | ? | ? | (if move) | (if move) |
+| y | y | y | | remove | ? | ? | (if move) | (if move) |
+
+This extends the file format from 1.1.x.  All fields past the "more" are new in version 1.2
+
+   * Topic, cUID, revision and verb are always provided.  more is empty or provided if needed.
+   * Attachment name & rev are provided for attachment changes
+   * Other Web.Topic and other Attachment are provided for "move" operations
+      * "remove", the "other" fields are the new locations/names
+      * "insert", the "other" fields are the previous location/names
+
 
 =cut
 

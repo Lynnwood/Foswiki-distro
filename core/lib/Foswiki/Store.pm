@@ -736,16 +736,18 @@ chain in to eveavesdrop on Store events
       * =update= - a web, topic or attachment has been modified
       * =insert= - a web, topic or attachment is being inserted
       * =remove= - a topic or attachment is being removed
-      * =autoattach= - special case of =insert= for autoattachments
+      * =autoattach= - special case of =insert= for autoattachments (Not implemented by all stores)
    * more - descriptive text containing store-specific flags
       * minor - Minor change not reported
       * delRev - Remove the head revision
       * repRev - Replace the head revision
-   * Provided but never used:
+   * Other data provided:
        * newmeta - Foswiki::Meta object for the new object (not remove)
        * newattachment - attachment name (not remove)
+       * newattachmentrev - Revision of the 
        * oldmeta - Foswiki::Meta object for the origin of a move (move, remove only)
        * oldattachment - origin of move (move, remove only)
+       * oldattachmentrev - Revision of the attachment
 
 =cut
 

@@ -191,9 +191,15 @@ sub moveAttachment {
     my $handler =
       $this->getHandler( $oldTopicObject->web, $oldTopicObject->topic,
         $oldAttachment );
+
+
     if ( $handler->storedDataExists() ) {
         $handler->moveAttachment( $this, $newTopicObject->web,
             $newTopicObject->topic, $newAttachment );
+
+
+
+
         $this->recordChange(
             _meta         => $oldTopicObject,
             _handler      => $handler,
@@ -222,14 +228,19 @@ sub copyAttachment {
     if ( $handler->storedDataExists() ) {
         $handler->copyAttachment( $this, $newTopicObject->web,
             $newTopicObject->topic, $newAttachment );
+
+        my $thandler = $this->getHandler( $oldTopicObject->web, $oldTopicObject->topic );
+        my $trev = $thandler->getLatestRevisionID();
+
         $this->recordChange(
             _meta         => $newTopicObject,
             _handler      => $handler,
             cuid          => $cUID,
-            revision      => 0,
+            revision      => $trev,
             verb          => 'insert',
             newmeta       => $newTopicObject,
-            newattachment => $newAttachment
+            newattachment => $newAttachment,
+            newattachrev  => 0,
         );
     }
 }
@@ -439,16 +450,20 @@ sub saveAttachment {
     $handler->addRevisionFromStream( $stream, $comment, $cUID,
         $options->{forcedate} );
 
+    my $thandler = $this->getHandler( $topicObject->web, $topicObject->topic );
+    my $trev = $thandler->getLatestRevisionID();
+
     my $rev = $handler->getLatestRevisionID();
     $this->recordChange(
         _meta    => $topicObject,
         _handler => $handler,
 
         cuid          => $cUID,
-        revision      => $rev,
+        revision      => $trev,
         verb          => $verb,
         newmeta       => $topicObject,
-        newattachment => $name
+        newattachment => $name,
+        newattachrev  => $rev
     );
 
     return $rev;
@@ -558,6 +573,7 @@ sub delRev {
 
         cuid     => $cUID,
         revision => $rev,
+        more     => 'delrev',
         verb     => 'update',
         newmeta  => $topicObject
     );
